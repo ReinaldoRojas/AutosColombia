@@ -22,12 +22,13 @@ def datos():
     engine = get_engine()
     with engine.connect() as c:
         assert c.scalar(text('SELECT current_database()')) == 'autos_colombia'
-        assert c.scalar(text('SELECT version_num FROM alembic_version')) == '0002'
+        assert c.scalar(text('SELECT version_num FROM alembic_version')) in ('0002', '0003', '0004')
     token = 'TEST-EST-' + uuid4().hex.upper()
     with Session(engine) as s, s.begin():
-        vehicles = [Vehiculo(placa=f'{token}-{n}', color='Prueba', modelo=2026, marca='Prueba', tipo='MOTO') for n in range(2)]
+        letras = ''.join(chr(65 + int(c, 16) % 26) for c in uuid4().hex[:3])
+        vehicles = [Vehiculo(placa=f'{letras}{n}{n}{n}', color='Prueba', modelo=2026, marca='Prueba', tipo='MOTO') for n in range(2)]
         cells = [Celda(codigo=f'{token}-{n}', tipo='Libre') for n in range(2)]
-        operators = [Operador(nombre=f'{token}-{n}', telefono='001') for n in range(2)]
+        operators = [Operador(nombre=f'{token}-{n}', telefono=f'3{int(uuid4().hex[:8], 16) % 10**9:09d}') for n in range(2)]
         s.add_all(vehicles + cells + operators)
         s.flush()
         data = {'v': [v.id for v in vehicles], 'placas': [v.placa for v in vehicles],
@@ -61,10 +62,10 @@ def test_recorrido_y_rechazos_sin_cambios_parciales(datos):
         assert outside.status_code == 200
         assert outside.json()['estancia'] is None and not outside.json()['esta_dentro']
         assert outside.json()['vehiculo']['id'] == d['v'][0]
-        for field, value in [('placa', 'INEXISTENTE-' + uuid4().hex), ('celda_id', 9223372036854775807), ('operador_id', 9223372036854775807)]:
+        for field, value in [('placa', ''.join(chr(65 + int(c, 16) % 26) for c in uuid4().hex[:3]) + '999'), ('celda_id', 9223372036854775807), ('operador_id', 9223372036854775807)]:
             assert client.post('/estancias/entrada', json={**entrada(d), field: value}).status_code == 404
             assert cantidad(d) == 0
-        missing = 'INEXISTENTE-' + uuid4().hex
+        missing = ''.join(chr(65 + int(c, 16) % 26) for c in uuid4().hex[:3]) + '999'
         assert client.get('/estancias/vehiculo/' + missing).status_code == 404
         assert client.post('/estancias/salida', json={'placa': missing, 'operador_id': d['o'][0]}).status_code == 404
         assert client.post('/estancias/salida', json={'placa': d['placas'][0], 'operador_id': 9223372036854775807}).status_code == 404

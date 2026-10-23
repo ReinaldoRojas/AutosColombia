@@ -22,6 +22,7 @@ class Vehiculo(Base):
         UniqueConstraint("placa", name="uq_vehiculo_placa"),
         CheckConstraint("placa ~ '[^[:space:]]'", name="ck_vehiculo_placa_no_vacia"),
         CheckConstraint("placa = upper(regexp_replace(placa, '^[[:space:]]+|[[:space:]]+$', '', 'g'))", name="ck_vehiculo_placa_normalizada"),
+        CheckConstraint("placa ~ '^[A-Z]{3}[0-9]{2}[0-9A-Z]$'", name="ck_vehiculo_placa_colombiana"),
         CheckConstraint("color ~ '[^[:space:]]'", name="ck_vehiculo_color_no_vacio"),
         CheckConstraint("marca ~ '[^[:space:]]'", name="ck_vehiculo_marca_no_vacia"),
         CheckConstraint("modelo BETWEEN 1 AND 9999", name="ck_vehiculo_modelo_anio"),
@@ -75,6 +76,8 @@ class Operador(Base):
     __table_args__ = (
         CheckConstraint("nombre ~ '[^[:space:]]'", name="ck_operador_nombre_no_vacio"),
         CheckConstraint("telefono ~ '[^[:space:]]'", name="ck_operador_telefono_no_vacio"),
+        UniqueConstraint("telefono", name="uq_operador_telefono"),
+        CheckConstraint("telefono ~ '^(3[0-9]{9}|60[1-8][0-9]{7})$'", name="ck_operador_telefono_colombiano"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)

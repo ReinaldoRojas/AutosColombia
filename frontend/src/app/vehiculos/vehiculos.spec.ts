@@ -84,6 +84,21 @@ describe('Gestión de vehículos', () => {
     http.expectNone((request) => request.method === 'POST');
   });
 
+  it('rechaza placas no colombianas sin llamar al servicio y acepta ABC-123 y ABC12D', () => {
+    flushList();
+    component.newVehicle();
+    for (const placa of ['AAAAA', 'TEST', 'ABC12', 'ABC1234', '1234AB', 'ÑBC123']) {
+      component.form.patchValue({ ...vehicle, placa });
+      component.save();
+      expect(component.fieldError('placa')).toContain('colombiana');
+    }
+    http.expectNone((r) => r.method === 'POST');
+    for (const placa of ['ABC-123', 'xyz 12a', 'ABC12D']) {
+      component.form.patchValue({ ...vehicle, placa });
+      expect(component.form.controls.placa.valid).toBe(true);
+    }
+  });
+
   it('crea con placa normalizada, bloquea doble envío y actualiza el listado', () => {
     flushList();
     component.newVehicle();

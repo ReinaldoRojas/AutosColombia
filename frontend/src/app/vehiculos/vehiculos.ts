@@ -5,14 +5,20 @@ import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angu
 import { ApiService } from '../services/api.service';
 import {
   ErrorApi,
+  MENSAJE_PLACA,
   TIPOS_VEHICULO,
   TipoVehiculo,
   Vehiculo,
   VehiculoCrear,
+  normalizarPlaca,
 } from '../models/vehiculo';
 
 const nonBlank: ValidatorFn = (control) =>
   typeof control.value === 'string' && control.value.trim() ? null : { required: true };
+const colombianPlate: ValidatorFn = (control) =>
+  typeof control.value !== 'string' || !control.value.trim() || normalizarPlaca(control.value)
+    ? null
+    : { placa: true };
 const year: ValidatorFn = (control) =>
   Number.isInteger(control.value) && control.value >= 1 && control.value <= 9999
     ? null
@@ -38,7 +44,7 @@ export class Vehiculos {
       { key: 'color', label: 'Color', type: 'text' },
     ];
   readonly form = this.fb.group({
-    placa: this.fb.nonNullable.control('', nonBlank),
+    placa: this.fb.nonNullable.control('', [nonBlank, colombianPlate]),
     color: this.fb.nonNullable.control('', nonBlank),
     modelo: this.fb.control<number | null>(null, [Validators.required, year]),
     marca: this.fb.nonNullable.control('', nonBlank),
@@ -137,6 +143,7 @@ export class Vehiculos {
     if (!control.touched || !control.errors) return '';
     if (control.errors['server']) return String(control.errors['server']);
     if (control.errors['required']) return 'Este campo es obligatorio y no puede estar vacío.';
+    if (control.errors['placa']) return MENSAJE_PLACA;
     if (field === 'modelo') return 'Introduce un año entero entre 1 y 9999.';
     if (field === 'tipo') return 'Selecciona un tipo válido.';
     return 'Revisa este campo.';
@@ -151,7 +158,7 @@ export class Vehiculos {
     }
     const value = this.form.getRawValue();
     const payload: VehiculoCrear = {
-      placa: value.placa.trim().toUpperCase(),
+      placa: normalizarPlaca(value.placa) ?? value.placa.trim().toUpperCase(),
       color: value.color.trim(),
       marca: value.marca.trim(),
       modelo: value.modelo!,

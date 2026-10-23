@@ -6,7 +6,7 @@ import { Operadores } from './operadores';
 describe('Gestión de operadores', () => {
   let fixture: ComponentFixture<Operadores>;
   let http: HttpTestingController;
-  const operator = { id: 1, nombre: 'Prueba Ana', telefono: '+57 00123' };
+  const operator = { id: 1, nombre: 'Prueba Ana', telefono: '3226561122' };
   const page = { items: [operator], total: 1, offset: 0, limit: 10 };
 
   beforeEach(async () => {
@@ -22,7 +22,7 @@ describe('Gestión de operadores', () => {
   });
   afterEach(() => http.verify());
 
-  it('crea desde el HTML, recorta textos y conserva prefijos sin duplicar envíos', () => {
+  it('crea desde el HTML, recorta textos y normaliza el teléfono sin duplicar envíos', () => {
     const c = fixture.componentInstance;
     c.newOperator();
     fixture.detectChanges();
@@ -30,7 +30,7 @@ describe('Gestión de operadores', () => {
     expect(root.querySelector<HTMLInputElement>('#telefono')!.type).toBe('tel');
     for (const [key, value] of Object.entries({
       nombre: ' Prueba Ana ',
-      telefono: ' +57 00123 ',
+      telefono: ' +57 322 656 1122 ',
     })) {
       const input = root.querySelector<HTMLInputElement>(`#${key}`)!;
       input.value = value;
@@ -43,7 +43,7 @@ describe('Gestión de operadores', () => {
     fixture.detectChanges();
     expect(root.querySelector('fieldset')!.disabled).toBe(true);
     const request = http.expectOne({ method: 'POST', url: '/operadores' });
-    expect(request.request.body).toEqual({ nombre: 'Prueba Ana', telefono: '+57 00123' });
+    expect(request.request.body).toEqual({ nombre: 'Prueba Ana', telefono: '3226561122' });
     request.flush(operator);
     http.expectOne('/operadores?offset=0&limit=10').flush(page);
     expect(c.success()).toContain('registrado');
@@ -57,7 +57,7 @@ describe('Gestión de operadores', () => {
     expect(c.fieldError('nombre')).toContain('obligatorio');
     expect(c.fieldError('telefono')).toContain('obligatorio');
     http.expectNone('/operadores');
-    c.form.setValue({ nombre: 'Prueba Ana', telefono: '00123' });
+    c.form.setValue({ nombre: 'Prueba Ana', telefono: '3001234567' });
     c.save();
     http
       .expectOne('/operadores')
@@ -66,19 +66,53 @@ describe('Gestión de operadores', () => {
         { status: 422, statusText: 'Unprocessable Entity' },
       );
     expect(c.fieldError('telefono')).toContain('rechazó');
-    c.form.controls.telefono.setValue('00045');
+    c.form.controls.telefono.setValue('3109876543');
     expect(c.form.valid).toBe(true);
   });
 
-  it('consulta antes de editar, guarda con PATCH sin id y conserva ceros', () => {
+  it('rechaza teléfonos no colombianos sin llamar al servicio', () => {
+    const c = fixture.componentInstance;
+    c.newOperator();
+    for (const telefono of [
+      '001',
+      '+57 00123',
+      '322656112',
+      '2226561122',
+      '6092345678',
+      '+1 3226561122',
+    ]) {
+      c.form.setValue({ nombre: 'Prueba', telefono });
+      c.save();
+      expect(c.fieldError('telefono')).toContain('colombiano');
+    }
+    http.expectNone('/operadores');
+  });
+
+  it('señala en el campo un teléfono ya registrado (409)', () => {
+    const c = fixture.componentInstance;
+    c.newOperator();
+    c.form.setValue({ nombre: 'Otro', telefono: '322 656 1122' });
+    c.save();
+    http
+      .expectOne('/operadores')
+      .flush(
+        { detail: 'Ya existe un operador con ese teléfono.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    expect(c.fieldError('telefono')).toBe('Ya existe un operador con ese teléfono.');
+    expect(c.actionError()).toBe('Ya existe un operador con ese teléfono.');
+    expect(c.busy()).toBe(false);
+  });
+
+  it('consulta antes de editar y guarda con PATCH sin id con el teléfono normalizado', () => {
     const c = fixture.componentInstance;
     c.edit(operator);
     http.expectOne('/operadores/1').flush(operator);
-    c.form.controls.telefono.setValue(' 00045 ');
+    c.form.controls.telefono.setValue(' (601) 234-5678 ');
     c.save();
     const request = http.expectOne({ method: 'PATCH', url: '/operadores/1' });
-    expect(request.request.body).toEqual({ nombre: operator.nombre, telefono: '00045' });
-    request.flush({ ...operator, telefono: '00045' });
+    expect(request.request.body).toEqual({ nombre: operator.nombre, telefono: '6012345678' });
+    request.flush({ ...operator, telefono: '6012345678' });
     http.expectOne('/operadores?offset=0&limit=10').flush(page);
     expect(c.success()).toContain('actualizado');
   });
@@ -136,7 +170,7 @@ describe('Gestión de operadores', () => {
     c.load();
     http.expectOne('/operadores?offset=0&limit=10').flush(page);
     c.newOperator();
-    c.form.setValue({ nombre: 'Prueba', telefono: '001' });
+    c.form.setValue({ nombre: 'Prueba', telefono: '3001234567' });
     c.save();
     http.expectOne('/operadores').error(new ProgressEvent('error'));
     expect(c.actionError()).toContain('No se pudo conectar');

@@ -42,8 +42,10 @@
               aria-describedby="entry-plate-error"
             />
             <span id="entry-plate-error" class="field-error">
-              @if (entrada.controls.placa.touched && entrada.controls.placa.invalid) {
+              @if (entrada.controls.placa.touched && entrada.controls.placa.hasError('required')) {
                 La placa es obligatoria y no puede estar vacía.
+              } @else if (entrada.controls.placa.touched && entrada.controls.placa.invalid) {
+                {{ mensajePlaca }}
               }
             </span>
           </div>
@@ -96,8 +98,12 @@
             <label for="query-plate">Placa a consultar</label
             ><input id="query-plate" type="text" formControlName="placa" />
             <span class="field-error">
-              @if (consulta.controls.placa.touched && consulta.controls.placa.invalid) {
+              @if (
+                consulta.controls.placa.touched && consulta.controls.placa.hasError('required')
+              ) {
                 La placa es obligatoria y no puede estar vacía.
+              } @else if (consulta.controls.placa.touched && consulta.controls.placa.invalid) {
+                {{ mensajePlaca }}
               }
             </span>
           </div>

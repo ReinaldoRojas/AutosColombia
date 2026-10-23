@@ -23,6 +23,9 @@ def database_operation(operation):
         except IntegrityError as error:
             session.rollback()
             code = getattr(error.orig, "sqlstate", None)
+            constraint = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
+            if code == "23505" and constraint == "uq_operador_telefono":
+                raise OperadorError(409, "Ya existe un operador con ese teléfono.") from None
             if code == "23503":
                 raise OperadorError(409, "El operador tiene registros relacionados y no se puede eliminar.") from None
             if code in {"23502", "23514"}:

@@ -1,4 +1,5 @@
 import importlib.util
+from unittest.mock import MagicMock
 from pathlib import Path
 
 import pytest
@@ -66,6 +67,31 @@ def test_migration_matches_models_without_connecting(monkeypatch):
     monkeypatch.setattr(migration.op, "create_table", lambda name, *args: sa.Table(name, metadata, *args))
     migration.upgrade()
     assert set(metadata.tables) == {"vehiculo", "celda", "operador"}
+    phone_path = path.with_name("0003_operador_telefono_unico.py")
+    phone_spec = importlib.util.spec_from_file_location("phone_migration", phone_path)
+    phone_migration = importlib.util.module_from_spec(phone_spec)
+    phone_spec.loader.exec_module(phone_migration)
+    operador = metadata.tables["operador"]
+    bind = MagicMock()
+    bind.execute.return_value.all.return_value = []
+    monkeypatch.setattr(phone_migration.op, "get_bind", lambda: bind)
+    monkeypatch.setattr(phone_migration.op, "create_unique_constraint",
+                        lambda name, table, columns: operador.append_constraint(sa.UniqueConstraint(*columns, name=name)))
+    monkeypatch.setattr(phone_migration.op, "create_check_constraint",
+                        lambda name, table, text: operador.append_constraint(sa.CheckConstraint(text, name=name)))
+    phone_migration.upgrade()
+    assert phone_migration.down_revision == "0002"
+    plate_path = path.with_name("0004_vehiculo_placa_colombiana.py")
+    plate_spec = importlib.util.spec_from_file_location("plate_migration", plate_path)
+    plate_migration = importlib.util.module_from_spec(plate_spec)
+    plate_spec.loader.exec_module(plate_migration)
+    vehiculo = metadata.tables["vehiculo"]
+    monkeypatch.setattr(plate_migration.op, "get_bind", lambda: bind)
+    monkeypatch.setattr(plate_migration.op, "execute", lambda *args: None)
+    monkeypatch.setattr(plate_migration.op, "create_check_constraint",
+                        lambda name, table, text: vehiculo.append_constraint(sa.CheckConstraint(text, name=name)))
+    plate_migration.upgrade()
+    assert plate_migration.down_revision == "0003"
     for name, table in metadata.tables.items():
         model_table = Base.metadata.tables[name]
         assert [(c.name, str(c.type), c.nullable) for c in table.columns] == [

@@ -10,6 +10,20 @@ const nonBlank: ValidatorFn = (control) =>
   typeof control.value === 'string' && control.value.trim() ? null : { required: true };
 type Field = keyof OperadorCrear;
 
+/** Devuelve los 10 dígitos de un celular (3XX) o fijo con indicativo (60X), o null si no es colombiano. */
+export function normalizarTelefono(value: string): string | null {
+  let digits = value.replace(/[\s\-.()]/g, '');
+  if (digits.startsWith('+57')) digits = digits.slice(3);
+  else if (digits.startsWith('0057')) digits = digits.slice(4);
+  else if (digits.length === 12 && digits.startsWith('57')) digits = digits.slice(2);
+  return /^(3\d{9}|60[1-8]\d{7})$/.test(digits) ? digits : null;
+}
+
+const colombianPhone: ValidatorFn = (control) =>
+  typeof control.value !== 'string' || !control.value.trim() || normalizarTelefono(control.value)
+    ? null
+    : { telefono: true };
+
 @Component({
   selector: 'app-operadores',
   imports: [ReactiveFormsModule],
@@ -26,7 +40,7 @@ export class Operadores {
   ];
   readonly form = this.fb.group({
     nombre: this.fb.nonNullable.control('', nonBlank),
-    telefono: this.fb.nonNullable.control('', nonBlank),
+    telefono: this.fb.nonNullable.control('', [nonBlank, colombianPhone]),
   });
   readonly items = signal<Operador[]>([]);
   readonly total = signal(0);
@@ -118,6 +132,8 @@ export class Operadores {
     if (!control.touched || !control.errors) return '';
     if (control.errors['server']) return String(control.errors['server']);
     if (control.errors['required']) return 'Este campo es obligatorio y no puede estar vacío.';
+    if (control.errors['telefono'])
+      return 'Ingresa un teléfono colombiano: celular de 10 dígitos que empieza por 3 (ej. 322 656 1122) o fijo con indicativo (ej. 601 234 5678). El +57 es opcional.';
     return 'Revisa este campo.';
   }
 
@@ -131,7 +147,7 @@ export class Operadores {
     const value = this.form.getRawValue();
     const payload: OperadorCrear = {
       nombre: value.nombre.trim(),
-      telefono: value.telefono.trim(),
+      telefono: normalizarTelefono(value.telefono) ?? value.telefono.trim(),
     };
     this.form.setValue(payload);
     this.saving.set(true);
@@ -152,6 +168,12 @@ export class Operadores {
         this.saving.set(false);
         this.actionError.set(this.errorMessage(error));
         const body = error.error as ErrorApi | null;
+        if (
+          error.status === 409 &&
+          typeof body?.detail === 'string' &&
+          /teléfono/i.test(body.detail)
+        )
+          this.setFieldError('telefono', body.detail);
         if (error.status === 422 && Array.isArray(body?.detail)) {
           for (const issue of body.detail) {
             const field = issue.loc.at(-1);
@@ -211,7 +233,9 @@ export class Operadores {
     if (error.status === 409)
       return deleting
         ? 'No se puede eliminar: el operador tiene registros relacionados o un conflicto con otros datos.'
-        : 'La operación entra en conflicto con los datos existentes.';
+        : error.error?.detail === 'Ya existe un operador con ese teléfono.'
+          ? 'Ya existe un operador con ese teléfono.'
+          : 'La operación entra en conflicto con los datos existentes.';
     if (error.status === 422)
       return 'Revisa los datos: hay campos que no cumplen las validaciones.';
     return 'No se pudo conectar con el servicio. Comprueba la conexión y actualiza el listado antes de reintentar.';

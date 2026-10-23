@@ -5,12 +5,17 @@ import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angu
 import { forkJoin } from 'rxjs';
 import { Celda } from '../models/celda';
 import { Operador } from '../models/operador';
+import { MENSAJE_PLACA, normalizarPlaca } from '../models/vehiculo';
 import { EstadoVehiculo } from '../models/estancia';
 import { EstanciasService } from '../services/estancias.service';
 
 const nonBlank: ValidatorFn = (c) =>
   typeof c.value === 'string' && c.value.trim() ? null : { required: true };
-const placa = (value: string) => value.trim().toUpperCase();
+const placa = (value: string) => normalizarPlaca(value) ?? value.trim().toUpperCase();
+const colombianPlate: ValidatorFn = (c) =>
+  typeof c.value !== 'string' || !c.value.trim() || normalizarPlaca(c.value)
+    ? null
+    : { placa: true };
 
 @Component({
   selector: 'app-control-acceso',
@@ -19,17 +24,18 @@ const placa = (value: string) => value.trim().toUpperCase();
   styleUrl: './control-acceso.css',
 })
 export class ControlAcceso {
+  readonly mensajePlaca = MENSAJE_PLACA;
   private readonly api = inject(EstanciasService);
   private readonly fb = inject(FormBuilder);
   private readonly destroy = inject(DestroyRef);
   private version = 0;
   readonly entrada = this.fb.group({
-    placa: this.fb.nonNullable.control('', nonBlank),
+    placa: this.fb.nonNullable.control('', [nonBlank, colombianPlate]),
     celda_id: this.fb.control<number | null>(null, Validators.required),
     operador_id: this.fb.control<number | null>(null, Validators.required),
   });
   readonly consulta = this.fb.group({
-    placa: this.fb.nonNullable.control('', nonBlank),
+    placa: this.fb.nonNullable.control('', [nonBlank, colombianPlate]),
     operador_id: this.fb.control<number | null>(null, Validators.required),
   });
   readonly celdas = signal<Celda[]>([]);

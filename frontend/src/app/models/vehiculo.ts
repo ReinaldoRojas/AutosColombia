@@ -25,3 +25,12 @@ export interface ErrorValidacion {
 export interface ErrorApi {
   detail?: string | ErrorValidacion[];
 }
+
+export const MENSAJE_PLACA =
+  'Ingresa una placa colombiana: tres letras y tres números (ABC123) o, en motos, tres letras, dos números y una letra (ABC12D).';
+
+/** Devuelve la placa en mayúsculas y sin separadores, o null si no es colombiana. */
+export function normalizarPlaca(value: string): string | null {
+  const placa = value.replace(/[\s-]/g, '').toUpperCase();
+  return /^[A-Z]{3}\d{2}[0-9A-Z]$/.test(placa) ? placa : null;
+}

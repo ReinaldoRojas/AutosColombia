@@ -46,3 +46,24 @@ def test_delete_foreign_key_conflict_rolls_back_without_related_deletes():
     assert "private" not in result.value.detail
     session.rollback.assert_called_once()
     session.delete.assert_called_once_with(vehicle)
+
+
+@pytest.mark.parametrize("entrada, esperado", [
+    ("ABC123", "ABC123"), (" abc123 ", "ABC123"), ("ABC-123", "ABC123"), ("abc 123", "ABC123"),
+    ("ABC12D", "ABC12D"), ("xyz-12a", "XYZ12A"),
+])
+def test_placa_colombiana_se_normaliza(entrada, esperado):
+    datos = {"color": "Azul", "modelo": 2025, "marca": "Marca", "tipo": "MOTO"}
+    assert VehiculoCrear(placa=entrada, **datos).placa == esperado
+    assert VehiculoActualizar(placa=entrada).placa == esperado
+
+
+@pytest.mark.parametrize("placa", [
+    "AAAAA", "TEST", "ABC12", "ABC1234", "AB1234", "1234AB", "ÑBC123", "ABC12@", "A-B-C-1-2-3-4",
+])
+def test_placa_no_colombiana_es_rechazada(placa):
+    datos = {"color": "Azul", "modelo": 2025, "marca": "Marca", "tipo": "MOTO"}
+    with pytest.raises(ValidationError):
+        VehiculoCrear(placa=placa, **datos)
+    with pytest.raises(ValidationError):
+        VehiculoActualizar(placa=placa)
