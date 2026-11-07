@@ -12,7 +12,7 @@ from app.models import Base, Celda, Operador, Vehiculo
 
 def test_normalizes_unique_identifiers_on_creation_and_assignment():
     vehicle = Vehiculo(placa=" \tabc123\n", color="Azul", modelo=2025, marca="Marca", tipo="MOTO")
-    cell = Celda(codigo=" a-01 ", tipo="Libre")
+    cell = Celda(codigo=" a-01 ", tipo="MOTO")
     assert vehicle.placa == "ABC123"
     assert cell.codigo == "A-01"
     vehicle.placa = " xyz789 "
@@ -38,27 +38,34 @@ def test_rejects_invalid_year(value):
         Vehiculo(modelo=value)
 
 
-@pytest.mark.parametrize("value", ["MOTO", "AUTOMOVIL", "CAMIONETA"])
+@pytest.mark.parametrize("value", ["MOTO", "CARRO", "CAMIONETA"])
 def test_vehicle_types(value):
     assert Vehiculo(tipo=value).tipo == value
 
 
 def test_rejects_unknown_type_and_preserves_phone_text():
-    with pytest.raises(ValueError):
-        Vehiculo(tipo="CAMION")
+    for tipo in ("CAMION", "AUTOMOVIL"):
+        with pytest.raises(ValueError):
+            Vehiculo(tipo=tipo)
     assert Operador(telefono="+57 00123").telefono == "+57 00123"
-    assert Celda(tipo="Categoría futura").tipo == "Categoría futura"
+    # RN-05: la celda solo puede ser de carro/camioneta o de moto.
+    assert Celda(tipo="CARRO_CAMIONETA").tipo == "CARRO_CAMIONETA"
+    with pytest.raises(ValueError):
+        Celda(tipo="Categoría futura")
 
 
 def test_required_columns_and_identity():
+    # Los datos de cliente y mensualidad son nulos solo en vehículos anteriores a la revisión 0005.
+    opcionales = {"vehiculo": {"cliente_id", "linea", "fecha_pago", "fecha_vencimiento"}, "celda": set(), "operador": set()}
     for name in ("vehiculo", "celda", "operador"):
         table = Base.metadata.tables[name]
-        assert all(not column.nullable for column in table.columns)
+        assert {column.name for column in table.columns if column.nullable} == opcionales[name]
         assert isinstance(table.c.id.type, sa.BigInteger)
         assert table.c.id.identity.always is True
 
 
-def test_migration_matches_models_without_connecting(monkeypatch):
+def test_migraciones_0001_a_0004_compilan_sin_conectar(monkeypatch):
+    """La revisión 0005 amplía estas tablas; su equivalencia completa se prueba en PostgreSQL."""
     path = Path(__file__).resolve().parents[1] / "migrations/versions/0001_modelos_iniciales.py"
     spec = importlib.util.spec_from_file_location("initial_migration", path)
     migration = importlib.util.module_from_spec(spec)
@@ -94,14 +101,10 @@ def test_migration_matches_models_without_connecting(monkeypatch):
     assert plate_migration.down_revision == "0003"
     for name, table in metadata.tables.items():
         model_table = Base.metadata.tables[name]
-        assert [(c.name, str(c.type), c.nullable) for c in table.columns] == [
-            (c.name, str(c.type), c.nullable) for c in model_table.columns
-        ]
-        def constraints(t):
-            return {(c.name, str(c.sqltext)) for c in t.constraints if isinstance(c, sa.CheckConstraint)}
-        assert constraints(table) == constraints(model_table)
+        modelo = {c.name: (str(c.type), c.nullable) for c in model_table.columns}
+        assert all(modelo[c.name] == (str(c.type), c.nullable) for c in table.columns)
         def unique_columns(t):
             return {tuple(c.columns.keys()) for c in t.constraints if isinstance(c, sa.UniqueConstraint)}
-        assert unique_columns(table) == unique_columns(model_table)
+        assert unique_columns(table) <= unique_columns(model_table)
         ddl = str(CreateTable(table).compile(dialect=postgresql.dialect()))
         assert "BIGINT GENERATED ALWAYS AS IDENTITY" in ddl

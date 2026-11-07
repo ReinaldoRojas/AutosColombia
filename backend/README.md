@@ -153,7 +153,7 @@ y de la configuración (`app/config.py`). La revisión `0001`, en
   la base rechaza valores sin normalizar en lugar de transformarlos silenciosamente.
 - `modelo` es un año entero entre 1 y 9999, no un nombre comercial; no se impone
   un límite vinculado al año actual. `telefono` es texto y conserva prefijos y ceros.
-- El tipo de vehículo admite únicamente `MOTO`, `AUTOMOVIL` y `CAMIONETA`.
+- El tipo de vehículo admite únicamente `MOTO`, `CARRO` y `CAMIONETA` (desde la revisión 0005; antes `AUTOMOVIL`).
   El tipo de celda es texto no vacío, sin catálogo ni reglas de compatibilidad todavía.
 - No hay relaciones ni Estancia ni creación automática de tablas al iniciar
   FastAPI. `/health` conserva su funcionamiento independiente.
@@ -225,7 +225,8 @@ la página. Los ids deben ser enteros positivos dentro del rango de BIGINT.
 Al crear se requieren placa, color, modelo, marca y tipo. El año debe ser un
 entero JSON entre 1 y 9999; no se aceptan cadenas, booleanos ni decimales. Los
 textos no pueden estar vacíos. La placa se recorta y se convierte a mayúsculas.
-Los tipos admitidos son `MOTO`, `AUTOMOVIL` y `CAMIONETA`.
+Los tipos admitidos son `MOTO`, `CARRO` y `CAMIONETA`. Desde la revisión 0005 el vehículo también
+exige `cliente_id`, `linea` y `fecha_pago`; la respuesta incluye `fecha_vencimiento`.
 
 PATCH aplica solo los campos enviados, rechaza valores nulos y campos desconocidos,
 incluido `id`. Un objeto vacío conserva el vehículo. Los errores de validación

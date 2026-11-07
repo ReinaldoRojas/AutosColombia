@@ -53,7 +53,8 @@ def test_delete_foreign_key_conflict_rolls_back_without_related_deletes():
     ("ABC12D", "ABC12D"), ("xyz-12a", "XYZ12A"),
 ])
 def test_placa_colombiana_se_normaliza(entrada, esperado):
-    datos = {"color": "Azul", "modelo": 2025, "marca": "Marca", "tipo": "MOTO"}
+    datos = {"color": "Azul", "modelo": 2025, "marca": "Marca", "tipo": "MOTO", "cliente_id": 1,
+             "linea": "NMax", "fecha_pago": "2026-10-05"}
     assert VehiculoCrear(placa=entrada, **datos).placa == esperado
     assert VehiculoActualizar(placa=entrada).placa == esperado
 
@@ -62,7 +63,8 @@ def test_placa_colombiana_se_normaliza(entrada, esperado):
     "AAAAA", "TEST", "ABC12", "ABC1234", "AB1234", "1234AB", "ÑBC123", "ABC12@", "A-B-C-1-2-3-4",
 ])
 def test_placa_no_colombiana_es_rechazada(placa):
-    datos = {"color": "Azul", "modelo": 2025, "marca": "Marca", "tipo": "MOTO"}
+    datos = {"color": "Azul", "modelo": 2025, "marca": "Marca", "tipo": "MOTO", "cliente_id": 1,
+             "linea": "NMax", "fecha_pago": "2026-10-05"}
     with pytest.raises(ValidationError):
         VehiculoCrear(placa=placa, **datos)
     with pytest.raises(ValidationError):

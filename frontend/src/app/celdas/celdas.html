@@ -18,22 +18,41 @@
   @if (showForm()) {
     <section class="panel" aria-labelledby="form-title">
       <h2 id="form-title">{{ editing() === null ? 'Registrar celda' : 'Editar celda' }}</h2>
-      <p class="hint">Todos los campos son obligatorios. El tipo es texto libre.</p>
+      <p class="hint">
+        Todos los campos son obligatorios. Las motos usan celdas de moto; carros y camionetas
+        comparten las demás.
+      </p>
       <form [formGroup]="form" (ngSubmit)="save()" novalidate>
         <fieldset [disabled]="busy()">
           <legend class="sr-only">Datos de la celda</legend>
           <div class="form-grid">
             @for (field of fields; track field.key) {
               <div class="field">
-                <label [for]="field.key">{{ field.label }}</label
-                ><input
-                  type="text"
-                  [id]="field.key"
-                  [formControlName]="field.key"
-                  required
-                  [attr.aria-invalid]="!!fieldError(field.key)"
-                  [attr.aria-describedby]="field.key + '-error'"
-                /><span class="field-error" [id]="field.key + '-error'">{{
+                <label [for]="field.key">{{ field.label }}</label>
+                @if (field.key === 'tipo') {
+                  <select
+                    id="tipo"
+                    formControlName="tipo"
+                    required
+                    [attr.aria-invalid]="!!fieldError('tipo')"
+                    aria-describedby="tipo-error"
+                  >
+                    <option value="">Selecciona un tipo</option>
+                    @for (t of tipos; track t) {
+                      <option [value]="t">{{ nombreCelda[t] }}</option>
+                    }
+                  </select>
+                } @else {
+                  <input
+                    type="text"
+                    [id]="field.key"
+                    [formControlName]="field.key"
+                    required
+                    [attr.aria-invalid]="!!fieldError(field.key)"
+                    [attr.aria-describedby]="field.key + '-error'"
+                  />
+                }
+                <span class="field-error" [id]="field.key + '-error'">{{
                   fieldError(field.key)
                 }}</span>
               </div>
@@ -58,7 +77,7 @@
       <h2 id="delete-title">Eliminar celda {{ cell.codigo }}</h2>
       <p id="delete-description">
         ¿Quieres eliminar la celda <strong>{{ cell.codigo }}</strong
-        >, de tipo {{ cell.tipo }}? Esta acción no se puede deshacer.
+        >, de tipo {{ nombreCelda[cell.tipo] ?? cell.tipo }}? Esta acción no se puede deshacer.
       </p>
       <div class="actions">
         <button type="button" (click)="cancel()" [disabled]="busy()">Cancelar eliminación</button
@@ -101,7 +120,7 @@
             @for (cell of items(); track cell.id) {
               <tr>
                 <th scope="row">{{ cell.codigo }}</th>
-                <td>{{ cell.tipo }}</td>
+                <td>{{ nombreCelda[cell.tipo] ?? cell.tipo }}</td>
                 <td class="row-actions">
                   <button
                     type="button"

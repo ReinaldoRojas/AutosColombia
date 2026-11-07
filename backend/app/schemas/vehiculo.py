@@ -1,4 +1,5 @@
 import re
+from datetime import date
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
@@ -24,13 +25,15 @@ def normalizar_placa(value: str) -> str:
 
 Placa = Annotated[str, BeforeValidator(normalizar_placa)]
 Anio = Annotated[int, Field(strict=True, ge=1, le=9999)]
+IdCliente = Annotated[int, Field(strict=True, ge=1, le=9223372036854775807)]
 TipoVehiculo = Annotated[
-    Literal["MOTO", "AUTOMOVIL", "CAMIONETA"],
+    Literal["MOTO", "CARRO", "CAMIONETA"],
     BeforeValidator(lambda value: required_text(value, "tipo")),
 ]
 
 
 class VehiculoCrear(BaseModel):
+    """RF-02: todo vehículo nuevo pertenece a un cliente y trae su fecha de pago."""
     model_config = ConfigDict(extra="forbid")
 
     placa: Placa
@@ -38,6 +41,9 @@ class VehiculoCrear(BaseModel):
     modelo: Anio
     marca: Texto
     tipo: TipoVehiculo
+    cliente_id: IdCliente
+    linea: Texto
+    fecha_pago: date
 
 
 class VehiculoActualizar(BaseModel):
@@ -48,6 +54,9 @@ class VehiculoActualizar(BaseModel):
     modelo: Anio | None = None
     marca: Texto | None = None
     tipo: TipoVehiculo | None = None
+    cliente_id: IdCliente | None = None
+    linea: Texto | None = None
+    fecha_pago: date | None = None
 
     @field_validator("*", mode="before")
     @classmethod
@@ -57,9 +66,19 @@ class VehiculoActualizar(BaseModel):
         return value
 
 
-class VehiculoRespuesta(VehiculoCrear):
-    model_config = ConfigDict(from_attributes=True, extra="forbid")
+class VehiculoRespuesta(BaseModel):
+    """Los vehículos anteriores a la revisión 0005 pueden no tener cliente, línea ni pago."""
+    model_config = ConfigDict(from_attributes=True)
     id: int
+    placa: str
+    color: str
+    modelo: int
+    marca: str
+    tipo: str
+    cliente_id: int | None
+    linea: str | None
+    fecha_pago: date | None
+    fecha_vencimiento: date | None
 
 
 class VehiculosPagina(BaseModel):

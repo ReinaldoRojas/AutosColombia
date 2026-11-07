@@ -1,5 +1,61 @@
 # Autos Colombia
 
+## Iteración RF-01 a RF-05 (alineada con el documento de diseño)
+
+Esta etapa implementa los requerimientos RF-01 a RF-05 del documento «EA1 Diseño de sistema
+de información». La pantalla *Control de acceso* se reemplaza por **Entrada** y **Salida**, y
+la gestión de vehículos pasa a la ficha de cada cliente. Las secciones posteriores de este
+archivo describen etapas anteriores y se conservan como historial.
+
+| RF / HU | Qué hace | Dónde |
+| --- | --- | --- |
+| RF-01 / HU-01 Registrar cliente | Tipo y número de documento (único), nombres, apellidos, teléfono colombiano y correo opcional. Si el documento ya existe responde 409 con `cliente_id` y la pantalla abre su ficha. | `POST/GET/PATCH /clientes`, pantalla **Clientes** |
+| RF-02 / HU-02 Vehículo asociado a un cliente | Todo vehículo nuevo exige `cliente_id`, `linea` y `fecha_pago`. PostgreSQL calcula `fecha_vencimiento = fecha_pago + 30 días` (RN-06). Un cliente puede tener varios vehículos. Tipos: `CARRO`, `CAMIONETA`, `MOTO`. | `POST /vehiculos`, ficha del cliente |
+| RF-03 / HU-03 Consultar por placa | Devuelve vehículo, propietario, estado de la mensualidad, si está adentro y el cupo de su tipo. Placa inexistente: 404 «Vehículo no registrado» y botón para registrarlo. | `GET /estancias/vehiculo/{placa}`, pantalla **Entrada** |
+| RF-04 / HU-04 Validar mensualidad | `VIGENTE`, `VENCE_HOY` (permite y avisa), `VENCIDA` (bloquea con días de mora), `SIN_PAGO` y `SIN_CLIENTE` (bloquean). La fecha es la del servidor en America/Bogota (RNF-11). | `app/services/mensualidad.py` |
+| RF-05 / HU-05 Entrada, celda automática y recibo | El operario ya no elige celda: el sistema toma una libre del tipo del vehículo con `FOR UPDATE SKIP LOCKED`, de modo que dos puertas a la vez reciben celdas distintas. Guarda operador y puerta de entrada y genera el recibo `E-000001`. | `POST /estancias/entrada`, `GET /estancias/recibo/{numero}` |
+
+Lo mínimo que RF-05 necesita fuera de esos RF:
+
+- **Puertas**: tabla `puerta` con *Puerta 1* y *Puerta 2* (`GET /puertas`); la entrada exige
+  `puerta_id`.
+- **Tipo de celda**: solo `CARRO_CAMIONETA` o `MOTO`, para saber qué celda corresponde a cada
+  vehículo. La migración crea las celdas 01–70 y 71–80 que no existan (RN-05). La pantalla
+  **Celdas** se conserva y ahora elige el tipo de una lista.
+- **Turno**: mientras no exista inicio de sesión (RNF-05), el operario elige su nombre y su
+  puerta en la pantalla y queda guardado en el navegador.
+- **Salida**: conserva su contrato (placa y operador). La búsqueda por recibo, la puerta de
+  salida y RF-06 a RF-11 no hacen parte de esta entrega.
+
+### Migración 0005
+
+Revisar el SQL sin tocar la base y luego aplicarla:
+
+```powershell
+Push-Location backend
+.\.venv\Scripts\python.exe -m alembic -c alembic.ini upgrade head --sql
+.\.venv\Scripts\python.exe -m alembic -c alembic.ini upgrade head
+Pop-Location
+```
+
+Datos existentes: los vehículos `AUTOMOVIL` pasan a `CARRO`; los vehículos anteriores quedan
+sin cliente ni pago y **no podrán ingresar** hasta asociarlos (RF-04). Los tipos libres de
+celda que contienen «MOTO» pasan a `MOTO` y el resto a `CARRO_CAMIONETA`. Las estancias
+existentes quedan registradas en la Puerta 1.
+
+### Pantallas nuevas
+
+- `/operacion/entrada`: 1) placa, 2) verificación de vehículo, propietario y mensualidad,
+  3) confirmar; muestra el recibo para imprimir (RNF-08: máximo 3 pasos).
+- `/operacion/salida`: salida por placa con el operador del turno.
+- `/gestion/clientes`: búsqueda, registro de clientes y sus vehículos con fecha de pago.
+
+### Pruebas
+
+`RUN_POSTGRES_TESTS=1` ejecuta además el recorrido real: mensualidad, celda automática por
+tipo, recibo, cupo lleno de motos y concurrencia entre las dos puertas (misma placa y dos
+vehículos a la vez). La prueba de esquema exige la revisión `0005`.
+
 ## Pantalla Control de acceso
 
 Disponible en **Control de acceso** en la navegación y en

@@ -1,0 +1,151 @@
+<section class="ui" aria-labelledby="entrada-title">
+  <header class="heading no-print">
+    <div>
+      <span class="eyebrow">OPERACIÓN · PUERTA</span>
+      <h1 id="entrada-title">Registrar entrada</h1>
+      <p>Digita la placa, verifica el vehículo y la mensualidad, y confirma el ingreso.</p>
+    </div>
+  </header>
+
+  <app-turno class="no-print" />
+
+  @if (ingreso(); as m) {
+    <section class="panel" aria-labelledby="ok-title">
+      <div class="notice success no-print" role="status">
+        <strong id="ok-title">Ingreso registrado · Celda {{ m.celda.codigo }}</strong>
+        Indica al conductor que se dirija a la celda {{ m.celda.codigo }} y entrégale el recibo.
+      </div>
+      <app-recibo [movimiento]="m" />
+      <div class="actions no-print recibo-acciones">
+        <button type="button" class="primary" (click)="imprimir()">Imprimir recibo</button>
+        <button type="button" (click)="nuevo()">Registrar otro ingreso</button>
+      </div>
+    </section>
+  } @else {
+    <section class="panel" aria-labelledby="paso1">
+      <h2 id="paso1"><span class="paso">1</span> Placa del vehículo</h2>
+      <form [formGroup]="form" (ngSubmit)="buscar()" class="buscar" novalidate>
+        <div class="field">
+          <label for="placa" class="sr-only">Placa</label>
+          <input
+            id="placa"
+            class="plate"
+            formControlName="placa"
+            placeholder="ABC123"
+            autocomplete="off"
+            maxlength="8"
+            [attr.aria-invalid]="form.controls.placa.touched && form.controls.placa.invalid"
+            aria-describedby="placa-error"
+          />
+          <span id="placa-error" class="field-error">
+            @if (form.controls.placa.touched && form.controls.placa.invalid) {
+              {{ mensajePlaca }}
+            }
+          </span>
+        </div>
+        <button class="primary big" type="submit" [disabled]="ocupado()">
+          {{ buscando() ? 'Buscando…' : 'Buscar' }}
+        </button>
+      </form>
+
+      @if (noRegistrada(); as placa) {
+        <div class="notice error" role="alert">
+          <strong>Vehículo no registrado</strong>
+          La placa {{ placa }} no está registrada. No se puede registrar la entrada de un vehículo
+          sin cliente.
+          <div class="actions acciones-aviso">
+            <a class="button primary" routerLink="/gestion/clientes" [queryParams]="{ placa }"
+              >Registrar cliente y vehículo</a
+            >
+          </div>
+        </div>
+      }
+      @if (error()) {
+        <p class="notice error" role="alert">{{ error() }}</p>
+      }
+    </section>
+
+    @if (consulta(); as c) {
+      <section class="panel" aria-labelledby="paso2">
+        <div class="row-between">
+          <h2 id="paso2"><span class="paso">2</span> Verifica el vehículo</h2>
+          <span class="badge" [class]="claseMensualidad(c.mensualidad.estado)">
+            Mensualidad: {{ nombreMensualidad[c.mensualidad.estado] }}
+          </span>
+        </div>
+        <p class="placa-grande">{{ c.vehiculo.placa }}</p>
+        <dl class="facts">
+          <div>
+            <dt>Tipo</dt>
+            <dd>{{ tipo(c.vehiculo.tipo) }}</dd>
+          </div>
+          <div>
+            <dt>Marca y línea</dt>
+            <dd>{{ c.vehiculo.marca }} {{ c.vehiculo.linea ?? '' }}</dd>
+          </div>
+          <div>
+            <dt>Modelo</dt>
+            <dd>{{ c.vehiculo.modelo }}</dd>
+          </div>
+          <div>
+            <dt>Color</dt>
+            <dd>{{ c.vehiculo.color }}</dd>
+          </div>
+          <div>
+            <dt>Propietario</dt>
+            <dd>
+              @if (c.cliente; as cl) {
+                {{ cl.nombres }} {{ cl.apellidos }}
+              } @else {
+                Sin cliente
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Documento</dt>
+            <dd>
+              {{ c.cliente ? c.cliente.tipo_documento + ' ' + c.cliente.numero_documento : '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Vence la mensualidad</dt>
+            <dd>{{ fechaDia(c.mensualidad.fecha_vencimiento) }}</dd>
+          </div>
+          <div>
+            <dt>Cupo para {{ c.cupo.nombre }}</dt>
+            <dd>{{ c.cupo.disponibles }} de {{ c.cupo.total }} disponibles</dd>
+          </div>
+        </dl>
+        <p class="notice" [class]="claseAviso(c.mensualidad.estado)">
+          {{ c.mensualidad.mensaje }}
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="paso3">
+        <h2 id="paso3"><span class="paso">3</span> Confirmar ingreso</h2>
+        @if (c.puede_ingresar) {
+          <p>El sistema asignará automáticamente una celda libre para {{ c.cupo.nombre }}.</p>
+          @if (!turnos.activo()) {
+            <p class="notice warning">Inicia tu turno (operador y puerta) para confirmar.</p>
+          }
+          <button
+            type="button"
+            class="primary big"
+            (click)="confirmar()"
+            [disabled]="ocupado() || !turnos.activo()"
+          >
+            {{ guardando() ? 'Registrando…' : 'Confirmar ingreso' }}
+          </button>
+        } @else {
+          <p class="notice error" role="alert">
+            <strong>No se permite el ingreso</strong>{{ c.motivo }}
+          </p>
+          @if (c.mensualidad.estado === 'SIN_CLIENTE' || c.mensualidad.estado === 'SIN_PAGO') {
+            <a class="button" routerLink="/gestion/clientes">Ir a clientes y vehículos</a>
+          }
+          <button type="button" class="primary big" disabled>Confirmar ingreso</button>
+        }
+      </section>
+    }
+  }
+</section>

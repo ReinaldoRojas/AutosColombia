@@ -29,4 +29,3 @@ export class CeldasService {
     return this.http.delete<void>(`${this.cells}/${id}`).pipe(timeout(15000));
   }
 }
-

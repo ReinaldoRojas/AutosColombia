@@ -1,0 +1,96 @@
+<section class="ui" aria-labelledby="salida-title">
+  <header class="heading">
+    <div>
+      <span class="eyebrow">OPERACIÓN · PUERTA</span>
+      <h1 id="salida-title">Registrar salida</h1>
+      <p>Digita la placa, verifica el recibo que presenta el conductor y confirma la salida.</p>
+    </div>
+  </header>
+
+  <app-turno />
+
+  @if (salida(); as s) {
+    <div class="notice success" role="status">
+      <strong>Salida registrada · Celda {{ s.celda.codigo }} disponible</strong>
+      {{ s.placa }} salió el {{ fecha(s.salida) }}.
+    </div>
+  }
+
+  <section class="panel" aria-labelledby="buscar-title">
+    <h2 id="buscar-title">Buscar ingreso abierto</h2>
+    <form [formGroup]="form" (ngSubmit)="buscar()" class="buscar" novalidate>
+      <div class="field">
+        <label for="placa" class="sr-only">Placa</label>
+        <input
+          id="placa"
+          class="plate"
+          formControlName="placa"
+          placeholder="ABC123"
+          autocomplete="off"
+          maxlength="8"
+          [attr.aria-invalid]="form.controls.placa.touched && form.controls.placa.invalid"
+          aria-describedby="placa-error"
+        />
+        <span id="placa-error" class="field-error">
+          @if (form.controls.placa.touched && form.controls.placa.invalid) {
+            {{ mensajePlaca }}
+          }
+        </span>
+      </div>
+      <button class="primary big" type="submit" [disabled]="ocupado()">
+        {{ buscando() ? 'Buscando…' : 'Buscar' }}
+      </button>
+    </form>
+    @if (error()) {
+      <p class="notice error" role="alert">{{ error() }}</p>
+    }
+  </section>
+
+  @if (registro(); as r) {
+    <section class="panel" aria-labelledby="registro-title">
+      <h2 id="registro-title">Ingreso abierto</h2>
+      <p class="placa-grande">{{ r.placa }}</p>
+      <dl class="facts">
+        <div>
+          <dt>Vehículo</dt>
+          <dd>{{ tipo(r.tipo_vehiculo) }} · {{ r.marca }} {{ r.linea ?? '' }}</dd>
+        </div>
+        <div>
+          <dt>Color</dt>
+          <dd>{{ r.color }}</dd>
+        </div>
+        <div>
+          <dt>Celda</dt>
+          <dd>{{ r.celda.codigo }}</dd>
+        </div>
+        <div>
+          <dt>Ingreso</dt>
+          <dd>{{ fecha(r.entrada) }} · {{ r.puerta_entrada.nombre }}</dd>
+        </div>
+        <div>
+          <dt>Recibo</dt>
+          <dd>{{ r.numero_recibo }}</dd>
+        </div>
+        <div>
+          <dt>Cliente</dt>
+          <dd>{{ r.cliente ?? '—' }}</dd>
+        </div>
+      </dl>
+      <p class="notice info">
+        Verifica que el recibo que presenta el conductor sea el <b>{{ r.numero_recibo }}</b
+        >.
+      </p>
+      @if (!turnos.activo()) {
+        <p class="notice warning">Inicia tu turno (operador y puerta) para confirmar.</p>
+      }
+      <button
+        type="button"
+        class="primary big confirmar"
+        (click)="confirmar()"
+        [disabled]="ocupado() || !turnos.activo()"
+      >
+        {{ guardando() ? 'Registrando…' : 'Confirmar salida' }}
+      </button>
+    </section>
+  }
+</section>

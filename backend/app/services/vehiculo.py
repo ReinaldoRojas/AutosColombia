@@ -26,6 +26,8 @@ def database_operation(operation):
             constraint = getattr(getattr(error.orig, "diag", None), "constraint_name", None)
             if code == "23505" and constraint == "uq_vehiculo_placa":
                 raise VehiculoError(409, "Ya existe un vehículo con esa placa.") from None
+            if code == "23503" and constraint == "fk_vehiculo_cliente":
+                raise VehiculoError(404, "Cliente no encontrado.") from None
             if code == "23503":
                 raise VehiculoError(409, "El vehículo tiene registros relacionados y no se puede eliminar.") from None
             if code in {"23502", "23514"}:

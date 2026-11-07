@@ -1,0 +1,44 @@
+.buscar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 14px;
+}
+.buscar .field {
+  flex: 1;
+  max-width: 320px;
+}
+.paso {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #214c43;
+  color: #fff;
+  font-size: 13px;
+}
+.placa-grande {
+  margin: 14px 0 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #203a33;
+}
+.acciones-aviso,
+.recibo-acciones {
+  margin-top: 14px;
+}
+.ui .panel .notice strong {
+  display: block;
+}
+@media (max-width: 480px) {
+  .buscar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .buscar .field {
+    max-width: none;
+  }
+}

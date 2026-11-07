@@ -6,7 +6,7 @@ import { Celdas } from './celdas';
 describe('Gestión de celdas', () => {
   let fixture: ComponentFixture<Celdas>;
   let http: HttpTestingController;
-  const cell = { id: 1, codigo: 'A-01', tipo: 'Categoría libre' };
+  const cell = { id: 1, codigo: 'A-01', tipo: 'MOTO' as const };
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Celdas],
@@ -21,24 +21,23 @@ describe('Gestión de celdas', () => {
   });
   afterEach(() => http.verify());
 
-  it('crea desde el formulario HTML con código normalizado y tipo libre', () => {
+  it('crea desde el formulario HTML con código normalizado y tipo de la lista', () => {
     fixture.componentInstance.newCell();
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    for (const [id, value] of Object.entries({
-      codigo: ' a-02 ',
-      tipo: 'Categoría sin catálogo',
-    })) {
-      const input = root.querySelector<HTMLInputElement>(`#${id}`)!;
-      input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+    const codigo = root.querySelector<HTMLInputElement>('#codigo')!;
+    codigo.value = ' a-02 ';
+    codigo.dispatchEvent(new Event('input', { bubbles: true }));
+    const tipo = root.querySelector<HTMLSelectElement>('#tipo')!;
+    expect([...tipo.options].map((o) => o.value)).toEqual(['', 'CARRO_CAMIONETA', 'MOTO']);
+    tipo.value = 'CARRO_CAMIONETA';
+    tipo.dispatchEvent(new Event('change', { bubbles: true }));
     root
       .querySelector('form')!
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     fixture.componentInstance.save();
     const request = http.expectOne({ method: 'POST', url: '/celdas' });
-    expect(request.request.body).toEqual({ codigo: 'A-02', tipo: 'Categoría sin catálogo' });
+    expect(request.request.body).toEqual({ codigo: 'A-02', tipo: 'CARRO_CAMIONETA' });
     request.flush({ ...cell, codigo: 'A-02' });
     http
       .expectOne('/celdas?offset=0&limit=10')
@@ -52,7 +51,7 @@ describe('Gestión de celdas', () => {
     c.form.setValue({ codigo: ' ', tipo: ' ' });
     c.save();
     expect(c.form.invalid).toBe(true);
-    c.form.setValue({ codigo: 'A-01', tipo: 'Libre' });
+    c.form.setValue({ codigo: 'A-01', tipo: 'MOTO' });
     c.save();
     http.expectOne('/celdas').flush({}, { status: 409, statusText: 'Conflict' });
     expect(c.fieldError('codigo')).toContain('Ya existe');
@@ -62,11 +61,11 @@ describe('Gestión de celdas', () => {
     const c = fixture.componentInstance;
     c.edit(cell);
     http.expectOne('/celdas/1').flush(cell);
-    c.form.controls.tipo.setValue('Nuevo tipo');
+    c.form.controls.tipo.setValue('CARRO_CAMIONETA');
     c.save();
     const request = http.expectOne({ method: 'PATCH', url: '/celdas/1' });
     expect(request.request.body.id).toBeUndefined();
-    request.flush({ ...cell, tipo: 'Nuevo tipo' });
+    request.flush({ ...cell, tipo: 'CARRO_CAMIONETA' });
     http
       .expectOne('/celdas?offset=0&limit=10')
       .flush({ items: [cell], total: 1, offset: 0, limit: 10 });

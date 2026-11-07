@@ -4,8 +4,14 @@
       <span class="brand-mark" aria-hidden="true">AC</span><span>Autos Colombia</span>
     </a>
     <nav aria-label="Navegación principal">
-      <a routerLink="/control-acceso" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Control de acceso</a
+      <a routerLink="/operacion/entrada" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Entrada</a
+      >
+      <a routerLink="/operacion/salida" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Salida</a
+      >
+      <a routerLink="/gestion/clientes" routerLinkActive="active" ariaCurrentWhenActive="page"
+        >Clientes</a
       >
       <a routerLink="/gestion/operadores" routerLinkActive="active" ariaCurrentWhenActive="page"
         >Operadores</a
@@ -20,10 +26,12 @@
         ariaCurrentWhenActive="page"
         >Inicio</a
       >
-      <a routerLink="/gestion/vehiculos" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Vehículos</a
-      >
     </nav>
+    @if (turnos.turno(); as t) {
+      <span class="turno-chip" title="Operador y puerta del turno actual"
+        >{{ t.operador.nombre }} · {{ t.puerta.nombre }}</span
+      >
+    }
   </header>
   <main><router-outlet /></main>
   <footer><span>Autos Colombia</span><span>Control vehicular con claridad.</span></footer>

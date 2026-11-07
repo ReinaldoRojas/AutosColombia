@@ -1,15 +1,34 @@
-export const TIPOS_VEHICULO = ['MOTO', 'AUTOMOVIL', 'CAMIONETA'] as const;
+export const TIPOS_VEHICULO = ['CARRO', 'CAMIONETA', 'MOTO'] as const;
 export type TipoVehiculo = (typeof TIPOS_VEHICULO)[number];
+export const NOMBRE_TIPO: Record<string, string> = {
+  CARRO: 'Carro',
+  CAMIONETA: 'Camioneta',
+  MOTO: 'Moto',
+};
+/** RF-02: todo vehículo pertenece a un cliente y trae la fecha de pago de su mensualidad. */
 export interface VehiculoCrear {
   placa: string;
   color: string;
   modelo: number;
   marca: string;
+  linea: string;
   tipo: TipoVehiculo;
+  cliente_id: number;
+  fecha_pago: string;
 }
 export type VehiculoActualizar = Partial<VehiculoCrear>;
-export interface Vehiculo extends VehiculoCrear {
+/** Los vehículos anteriores a esta iteración pueden no tener cliente, línea ni pago. */
+export interface Vehiculo {
   id: number;
+  placa: string;
+  color: string;
+  modelo: number;
+  marca: string;
+  tipo: string;
+  cliente_id: number | null;
+  linea: string | null;
+  fecha_pago: string | null;
+  fecha_vencimiento: string | null;
 }
 export interface VehiculosPagina {
   items: Vehiculo[];

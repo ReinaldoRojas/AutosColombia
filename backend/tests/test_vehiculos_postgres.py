@@ -23,7 +23,7 @@ def client():
         transaction = connection.begin()
         try:
             assert connection.scalar(text("SELECT current_database()")) == "autos_colombia"
-            assert connection.scalar(text("SELECT version_num FROM alembic_version")) in {"0001", "0002", "0003", "0004"}
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) in {"0005"}
             with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
                 def override_session():
                     yield session
@@ -39,14 +39,25 @@ def client():
 
 def test_crud_and_errors_in_postgres(client):
     letters = "".join(chr(65 + int(c, 16) % 26) for c in uuid4().hex[:3])
+    documento = str(int(uuid4().hex[:12], 16))[:12]
+    owner = client.post("/clientes", json={"tipo_documento": "CC", "numero_documento": documento, "nombres": "Ana",
+                                           "apellidos": "Prueba", "telefono": "3001112233"})
+    assert owner.status_code == 201
     payload = {"placa": f" {letters.lower()}-111 ", "color": "Azul", "modelo": 2025,
-               "marca": "Prueba", "tipo": "AUTOMOVIL"}
+               "marca": "Prueba", "tipo": "CARRO", "cliente_id": owner.json()["id"], "linea": "Linea",
+               "fecha_pago": "2026-10-05"}
+    # RF-02: el vehículo exige cliente existente, línea y fecha de pago.
+    assert client.post("/vehiculos", json={**payload, "cliente_id": 9223372036854775807}).status_code == 404
+    for missing in ("cliente_id", "linea", "fecha_pago"):
+        assert client.post("/vehiculos", json={k: v for k, v in payload.items() if k != missing}).status_code == 422
     created = client.post("/vehiculos", json=payload)
     assert created.status_code == 201
     vehicle = created.json()
     first_id = vehicle["id"]
     assert vehicle["placa"] == f"{letters}111"
     assert vehicle["modelo"] == 2025
+    assert vehicle["fecha_vencimiento"] == "2026-11-04"
+    assert client.get(f"/clientes/{owner.json()['id']}").json()["vehiculos"][0]["id"] == vehicle["id"]
     assert client.get(f"/vehiculos/{first_id}").json() == vehicle
     assert client.post("/vehiculos", json=payload).status_code == 409
     # La sesión debe seguir siendo utilizable después del conflicto real de PostgreSQL.
@@ -68,7 +79,7 @@ def test_crud_and_errors_in_postgres(client):
     assert patched.json()["color"] == "Rojo"
     assert patched.json()["placa"] == f"{letters}333"
     assert patched.json()["marca"] == "Prueba"
-    for invalid in ({"color": None}, {"id": first_id}, {"placa": " "}, {"placa": "AAAAA"}, {"placa": "ABC-12"}, {"placa": "1234AB"}, {"tipo": "BUS"},
+    for invalid in ({"color": None}, {"id": first_id}, {"placa": " "}, {"placa": "AAAAA"}, {"placa": "ABC-12"}, {"placa": "1234AB"}, {"tipo": "BUS"}, {"tipo": "AUTOMOVIL"},
                     {"modelo": 0}, {"modelo": True}, {"modelo": "2025"}, {"marca": "\t"}):
         assert client.patch(f"/vehiculos/{first_id}", json=invalid).status_code == 422
     assert client.post("/vehiculos", json={}).status_code == 422

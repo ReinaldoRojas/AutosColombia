@@ -1,16 +1,14 @@
 {
+  "/health": { "target": "http://127.0.0.1:8000" },
+  "/estancias": { "target": "http://127.0.0.1:8000" },
   "/estancias/**": { "target": "http://127.0.0.1:8000" },
+  "/clientes": { "target": "http://127.0.0.1:8000" },
+  "/clientes/**": { "target": "http://127.0.0.1:8000" },
+  "/puertas": { "target": "http://127.0.0.1:8000" },
   "/operadores": { "target": "http://127.0.0.1:8000" },
   "/operadores/**": { "target": "http://127.0.0.1:8000" },
   "/celdas": { "target": "http://127.0.0.1:8000" },
   "/celdas/**": { "target": "http://127.0.0.1:8000" },
-  "/health": {
-    "target": "http://127.0.0.1:8000"
-  },
-  "/vehiculos": {
-    "target": "http://127.0.0.1:8000"
-  },
-  "/vehiculos/**": {
-    "target": "http://127.0.0.1:8000"
-  }
+  "/vehiculos": { "target": "http://127.0.0.1:8000" },
+  "/vehiculos/**": { "target": "http://127.0.0.1:8000" }
 }

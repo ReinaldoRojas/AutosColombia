@@ -1,0 +1,296 @@
+<section class="ui" aria-labelledby="clientes-title">
+  <header class="heading">
+    <div>
+      <span class="eyebrow">GESTIÓN</span>
+      <h1 id="clientes-title">Clientes y vehículos</h1>
+      <p>Registra a las personas y sus vehículos con la fecha de pago de cada mensualidad.</p>
+    </div>
+    <button type="button" class="primary" (click)="nuevoCliente()">Nuevo cliente</button>
+  </header>
+
+  @if (placaPendiente(); as placa) {
+    <p class="notice info">
+      La placa <b>{{ placa }}</b> no está registrada. Registra (o busca) al cliente y luego su
+      vehículo; después vuelve a <a routerLink="/operacion/entrada">Registrar entrada</a>.
+    </p>
+  }
+  @if (exito()) {
+    <p class="notice success" role="status">{{ exito() }}</p>
+  }
+  @if (error()) {
+    <p class="notice error" role="alert">{{ error() }}</p>
+  }
+
+  <div class="two-col">
+    <div>
+      @if (creando()) {
+        <section class="panel" aria-labelledby="nuevo-title">
+          <h2 id="nuevo-title">Registrar cliente</h2>
+          <p class="hint">El documento no se puede repetir. El correo es opcional.</p>
+          <form [formGroup]="cliente" (ngSubmit)="guardarCliente()" novalidate>
+            <div class="form-grid">
+              <div class="field">
+                <label for="tipo_documento">Tipo de documento</label>
+                <select id="tipo_documento" formControlName="tipo_documento">
+                  @for (t of tiposDocumento; track t.valor) {
+                    <option [value]="t.valor">{{ t.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label for="numero_documento">Número de documento</label>
+                <input
+                  id="numero_documento"
+                  formControlName="numero_documento"
+                  [attr.aria-invalid]="invalido('cliente', 'numero_documento')"
+                />
+                <span class="field-error">
+                  @if (invalido('cliente', 'numero_documento')) {
+                    Digita entre 3 y 20 letras o números.
+                  }
+                </span>
+              </div>
+              <div class="field">
+                <label for="telefono">Teléfono</label>
+                <input
+                  id="telefono"
+                  type="tel"
+                  formControlName="telefono"
+                  placeholder="3001234567"
+                  [attr.aria-invalid]="invalido('cliente', 'telefono')"
+                />
+                <span class="field-error">
+                  @if (invalido('cliente', 'telefono')) {
+                    Celular (3001234567) o fijo (6011234567).
+                  }
+                </span>
+              </div>
+              <div class="field">
+                <label for="nombres">Nombres</label>
+                <input
+                  id="nombres"
+                  formControlName="nombres"
+                  [attr.aria-invalid]="invalido('cliente', 'nombres')"
+                />
+                <span class="field-error">
+                  @if (invalido('cliente', 'nombres')) {
+                    Obligatorio.
+                  }
+                </span>
+              </div>
+              <div class="field">
+                <label for="apellidos">Apellidos</label>
+                <input
+                  id="apellidos"
+                  formControlName="apellidos"
+                  [attr.aria-invalid]="invalido('cliente', 'apellidos')"
+                />
+                <span class="field-error">
+                  @if (invalido('cliente', 'apellidos')) {
+                    Obligatorio.
+                  }
+                </span>
+              </div>
+              <div class="field">
+                <label for="correo">Correo (opcional)</label>
+                <input
+                  id="correo"
+                  type="email"
+                  formControlName="correo"
+                  [attr.aria-invalid]="invalido('cliente', 'correo')"
+                />
+                <span class="field-error">
+                  @if (invalido('cliente', 'correo')) {
+                    Ejemplo: nombre&#64;correo.com
+                  }
+                </span>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" type="submit" [disabled]="guardando()">
+                {{ guardando() ? 'Guardando…' : 'Guardar cliente' }}
+              </button>
+              <button type="button" (click)="creando.set(false)">Cancelar</button>
+            </div>
+          </form>
+        </section>
+      }
+
+      @if (ficha(); as f) {
+        <section class="panel" aria-labelledby="ficha-title">
+          <span class="eyebrow">FICHA DEL CLIENTE</span>
+          <h2 id="ficha-title">{{ f.nombres }} {{ f.apellidos }}</h2>
+          <dl class="facts">
+            <div>
+              <dt>Documento</dt>
+              <dd>{{ f.tipo_documento }} {{ f.numero_documento }}</dd>
+            </div>
+            <div>
+              <dt>Teléfono</dt>
+              <dd>{{ f.telefono }}</dd>
+            </div>
+            <div>
+              <dt>Correo</dt>
+              <dd>{{ f.correo ?? '—' }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="panel" aria-labelledby="vehiculos-title">
+          <div class="row-between">
+            <h2 id="vehiculos-title">Vehículos ({{ f.vehiculos.length }})</h2>
+            @if (!agregandoVehiculo()) {
+              <button type="button" class="primary" (click)="agregarVehiculo()">
+                Agregar vehículo
+              </button>
+            }
+          </div>
+          @if (agregandoVehiculo()) {
+            <form
+              [formGroup]="vehiculo"
+              (ngSubmit)="guardarVehiculo()"
+              novalidate
+              class="nuevo-vehiculo"
+            >
+              <div class="form-grid">
+                <div class="field">
+                  <label for="placa">Placa</label>
+                  <input
+                    id="placa"
+                    formControlName="placa"
+                    placeholder="ABC123"
+                    [attr.aria-invalid]="invalido('vehiculo', 'placa')"
+                  />
+                  <span class="field-error">
+                    @if (invalido('vehiculo', 'placa')) {
+                      {{ mensajePlaca }}
+                    }
+                  </span>
+                </div>
+                <div class="field">
+                  <label for="tipo">Tipo</label>
+                  <select id="tipo" formControlName="tipo">
+                    @for (t of tiposVehiculo; track t) {
+                      <option [value]="t">{{ nombreTipo[t] }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="marca">Marca</label>
+                  <input
+                    id="marca"
+                    formControlName="marca"
+                    [attr.aria-invalid]="invalido('vehiculo', 'marca')"
+                  />
+                </div>
+                <div class="field">
+                  <label for="linea">Línea</label>
+                  <input
+                    id="linea"
+                    formControlName="linea"
+                    placeholder="Mazda 3"
+                    [attr.aria-invalid]="invalido('vehiculo', 'linea')"
+                  />
+                </div>
+                <div class="field">
+                  <label for="modelo">Modelo (año)</label>
+                  <input
+                    id="modelo"
+                    type="number"
+                    formControlName="modelo"
+                    [attr.aria-invalid]="invalido('vehiculo', 'modelo')"
+                  />
+                </div>
+                <div class="field">
+                  <label for="color">Color</label>
+                  <input
+                    id="color"
+                    formControlName="color"
+                    [attr.aria-invalid]="invalido('vehiculo', 'color')"
+                  />
+                </div>
+                <div class="field">
+                  <label for="fecha_pago">Fecha de pago de la mensualidad</label>
+                  <input id="fecha_pago" type="date" formControlName="fecha_pago" />
+                  <span class="hint">Vence 30 días después.</span>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="primary" type="submit" [disabled]="guardando()">
+                  {{ guardando() ? 'Guardando…' : 'Guardar vehículo' }}
+                </button>
+                <button type="button" (click)="agregandoVehiculo.set(false)">Cancelar</button>
+              </div>
+            </form>
+          }
+          @if (f.vehiculos.length) {
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Placa</th>
+                    <th scope="col">Vehículo</th>
+                    <th scope="col">Pago</th>
+                    <th scope="col">Vence</th>
+                    <th scope="col">Mensualidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (v of f.vehiculos; track v.id) {
+                    <tr>
+                      <th scope="row">{{ v.placa }}</th>
+                      <td>
+                        {{ nombreTipo[v.tipo] ?? v.tipo }} · {{ v.marca }} {{ v.linea ?? '' }}
+                        {{ v.modelo }}
+                        <span class="muted">· {{ v.color }}</span>
+                      </td>
+                      <td>{{ fechaDia(v.fecha_pago) }}</td>
+                      <td>{{ fechaDia(v.fecha_vencimiento) }}</td>
+                      <td>
+                        <span class="badge" [class]="claseMensualidad(estado(v))">{{
+                          nombreMensualidad[estado(v)]
+                        }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else if (!agregandoVehiculo()) {
+            <p class="hint">Este cliente aún no tiene vehículos.</p>
+          }
+        </section>
+      }
+
+      @if (!creando() && !ficha()) {
+        <section class="panel vacio">
+          <h2>Selecciona un cliente</h2>
+          <p>Busca por documento o nombre, o registra uno nuevo.</p>
+        </section>
+      }
+    </div>
+
+    <aside class="panel" aria-labelledby="lista-title">
+      <h2 id="lista-title">
+        Clientes registrados <span class="badge neutral">{{ total() }}</span>
+      </h2>
+      <form class="buscar" (ngSubmit)="buscar()">
+        <label for="q" class="sr-only">Buscar cliente</label>
+        <input id="q" [formControl]="busqueda" placeholder="Documento o nombre" />
+        <button type="submit">Buscar</button>
+      </form>
+      <ul class="lista">
+        @for (c of clientes(); track c.id) {
+          <li>
+            <button type="button" [class.sel]="ficha()?.id === c.id" (click)="abrir(c.id)">
+              <b>{{ c.nombres }} {{ c.apellidos }}</b>
+              <small>{{ c.tipo_documento }} {{ c.numero_documento }}</small>
+            </button>
+          </li>
+        } @empty {
+          <li class="hint">No hay clientes que coincidan.</li>
+        }
+      </ul>
+    </aside>
+  </div>
+</section>

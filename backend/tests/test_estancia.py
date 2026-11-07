@@ -63,15 +63,17 @@ def test_relaciones_y_columnas():
     for relation in mapper.relationships:
         assert not relation.cascade.delete and not relation.cascade.delete_orphan
     table = Estancia.__table__
-    assert {c.name for c in table.c if c.nullable} == {"salida", "operador_salida_id"}
+    assert {c.name for c in table.c if c.nullable} == {"salida", "operador_salida_id", "puerta_salida_id"}
+    assert "id" in str(table.c.numero_recibo.computed.sqltext)
     assert isinstance(table.c.id.type, sa.BigInteger) and table.c.id.identity.always
     assert table.c.entrada.type.timezone and table.c.salida.type.timezone
     assert str(table.c.entrada.server_default.arg) == "now()"
-    assert len(table.foreign_keys) == 4
+    assert len(table.foreign_keys) == 6
     assert all(fk.ondelete == "RESTRICT" for fk in table.foreign_keys)
 
 
-def test_migracion_coincide_con_modelo_y_compila_sql(monkeypatch):
+def test_migracion_0002_compila_sql(monkeypatch):
+    """La revisión 0005 agrega puertas y recibo; la equivalencia final se prueba en PostgreSQL."""
     root = Path(__file__).resolve().parents[1]
     spec = importlib.util.spec_from_file_location("estancia_migration", root / "migrations/versions/0002_estancia.py")
     migration = importlib.util.module_from_spec(spec)
@@ -90,15 +92,11 @@ def test_migracion_coincide_con_modelo_y_compila_sql(monkeypatch):
     dialect = postgresql.dialect()
     expected = Estancia.__table__
     actual = metadata.tables["estancia"]
-    def ddl_parts(table):
-        # El orden de declaración de CHECK/FK no cambia la estructura.
-        return sorted(line.strip().rstrip(",") for line in
-                      str(CreateTable(table).compile(dialect=dialect)).splitlines())
-
-    assert ddl_parts(actual) == ddl_parts(expected)
-    assert {str(CreateIndex(i).compile(dialect=dialect)) for i in actual.indexes} == {
-        str(CreateIndex(i).compile(dialect=dialect)) for i in expected.indexes
-    }
+    modelo = {c.name: str(c.type) for c in expected.columns}
+    assert all(modelo[c.name] == str(c.type) for c in actual.columns)
+    indices = {str(CreateIndex(i).compile(dialect=dialect)) for i in actual.indexes}
+    assert any("uq_estancia_celda_abierta" in i for i in indices)
+    assert "CREATE TABLE estancia" in str(CreateTable(actual).compile(dialect=dialect))
 
 
 def test_alembic_offline_solo_agrega_estancia():
